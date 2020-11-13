@@ -1,7 +1,13 @@
 # Original from official WordPress Docker file
 # https://github.com/docker-library/wordpress/blob/master/php7.3/fpm-alpine/Dockerfile
 
-FROM php:7.3-fpm-alpine
+ARG PHP_VERSION=7.4
+
+FROM php:${PHP_VERSION}-fpm-alpine
+
+LABEL maintainer="Tareq Hasan <tareq@hey.com>"
+
+RUN if [ "$PHP_VERSION" == '7.4' ]; then GD_OPTIONS="--with-freetype --with-jpeg"; else GD_OPTIONS="--with-freetype-dir=/usr --with-jpeg-dir=/usr --with-png-dir=/usr"; fi
 
 # persistent dependencies
 RUN apk add --no-cache \
@@ -26,7 +32,7 @@ RUN set -ex; \
     libzip-dev \
     ; \
     \
-    docker-php-ext-configure gd --with-freetype-dir=/usr --with-jpeg-dir=/usr --with-png-dir=/usr; \
+    docker-php-ext-configure gd $GD_OPTIONS; \
     docker-php-ext-install -j "$(nproc)" \
     bcmath \
     exif \
@@ -48,32 +54,21 @@ RUN set -ex; \
     apk del .build-deps
 
 
-
 # set recommended PHP.ini settings
 # see https://secure.php.net/manual/en/opcache.installation.php
 RUN set -eux; \
-    docker-php-ext-enable opcache; \
-    { \
-    echo 'opcache.memory_consumption=128'; \
-    echo 'opcache.interned_strings_buffer=8'; \
-    echo 'opcache.max_accelerated_files=4000'; \
-    echo 'opcache.revalidate_freq=2'; \
-    echo 'opcache.fast_shutdown=1'; \
-    } > /usr/local/etc/php/conf.d/opcache-recommended.ini
+    docker-php-ext-enable opcache;
+COPY opcache-recommended.ini /usr/local/etc/php/conf.d/opcache-recommended.ini
+
+# Configure Error Logging
 # https://wordpress.org/support/article/editing-wp-config-php/#configure-error-logging
-RUN { \
-    # https://www.php.net/manual/en/errorfunc.constants.php
-    # https://github.com/docker-library/wordpress/issues/420#issuecomment-517839670
-    echo 'error_reporting = E_ERROR | E_WARNING | E_PARSE | E_CORE_ERROR | E_CORE_WARNING | E_COMPILE_ERROR | E_COMPILE_WARNING | E_RECOVERABLE_ERROR'; \
-    echo 'display_errors = Off'; \
-    echo 'display_startup_errors = Off'; \
-    echo 'log_errors = On'; \
-    echo 'error_log = /dev/stderr'; \
-    echo 'log_errors_max_len = 1024'; \
-    echo 'ignore_repeated_errors = On'; \
-    echo 'ignore_repeated_source = Off'; \
-    echo 'html_errors = Off'; \
-    } > /usr/local/etc/php/conf.d/error-logging.ini
+COPY error-logging.ini /usr/local/etc/php/conf.d/error-logging.ini
+
+# Increase upload limit
+COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
+
+# Don't expose PHP
+COPY expose.ini /usr/local/etc/php/conf.d/expose.ini
 
 # Donwload and install composer
 RUN curl -sSL "https://getcomposer.org/installer" | php \
