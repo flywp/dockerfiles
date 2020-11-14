@@ -15,10 +15,10 @@ It _doesn't contain_ WordPress, like the [official image](https://hub.docker.com
 
 ```bash
 # PHP 7.3
-docker image pull tareq1988/wordpress:7.3
+docker image pull tareq1988/php-wp:7.3
 
 # PHP 7.4
-docker image pull tareq1988/wordpress:7.4
+docker image pull tareq1988/php-wp:7.4
 ```
 
 ### Using the images
@@ -27,10 +27,10 @@ One-off commands
 
 ```bash
 # PHP 7.4
-docker run --rm tareq1988/wordpress:7.4 bash -c "php -v"
+docker run --rm tareq1988/php-wp:7.4 bash -c "php -v"
 
 # PHP 7.3
-docker run --rm tareq1988/wordpress:7.3 bash -c "php -v"
+docker run --rm tareq1988/php-wp:7.3 bash -c "php -v"
 ```
 
 With docker-compose:
@@ -39,7 +39,7 @@ With docker-compose:
 version: "3"
 services:
   php:
-    image: "tareq1988/wordpress:7.3"
+    image: "tareq1988/php-wp:7.3"
     volumes:
       - "./app:/var/www/html"
 ```
