@@ -17,6 +17,8 @@ RUN apk add --no-cache \
     sed \
     # Ghostscript is required for rendering PDF previews
     ghostscript \
+    # install mysql
+    mysql-client \
     # Alpine package for "imagemagick" contains ~120 .so files, see: https://github.com/docker-library/wordpress/pull/497
     imagemagick
 
@@ -78,6 +80,9 @@ RUN curl -sSL "https://getcomposer.org/installer" | php \
 RUN curl -O "https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar" \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp
+
+# Set pager for WP-CLI
+ENV PAGER=less
 
 VOLUME /var/www/html
 

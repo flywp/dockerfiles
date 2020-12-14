@@ -1,4 +1,5 @@
 #!/bin/bash
 
-docker push tareq1988/php-wp:7.4
-docker push tareq1988/php-wp:7.3
+docker push meghsh/php:7.4
+docker push meghsh/php:7.3
+docker push meghsh/php:7.2
