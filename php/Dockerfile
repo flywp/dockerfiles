@@ -5,9 +5,7 @@ ARG PHP_VERSION=7.4
 
 FROM php:${PHP_VERSION}-fpm-alpine
 
-LABEL maintainer="Tareq Hasan <tareq@hey.com>"
-
-RUN if [ "$PHP_VERSION" == '7.4' ]; then GD_OPTIONS="--with-freetype --with-jpeg"; else GD_OPTIONS="--with-freetype-dir=/usr --with-jpeg-dir=/usr --with-png-dir=/usr"; fi
+LABEL maintainer="Tareq Hasan <tareq@wedevs.com>"
 
 # persistent dependencies
 RUN apk add --no-cache \
@@ -34,7 +32,6 @@ RUN set -ex; \
     libzip-dev \
     ; \
     \
-    docker-php-ext-configure gd $GD_OPTIONS; \
     docker-php-ext-install -j "$(nproc)" \
     bcmath \
     exif \
@@ -42,7 +39,7 @@ RUN set -ex; \
     mysqli \
     zip \
     ; \
-    pecl install imagick-3.4.4; \
+    pecl install imagick; \
     pecl install redis; \
     docker-php-ext-enable imagick redis; \
     \
