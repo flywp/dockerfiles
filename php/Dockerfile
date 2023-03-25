@@ -18,7 +18,9 @@ RUN apk add --no-cache \
     # install mysql
     mysql-client \
     # Alpine package for "imagemagick" contains ~120 .so files, see: https://github.com/docker-library/wordpress/pull/497
-    imagemagick
+    imagemagick \
+    # install shadow for usermod command
+    shadow
 
 # install the PHP extensions we need (https://make.wordpress.org/hosting/handbook/handbook/server-environment/#php-extensions)
 RUN set -ex; \
@@ -26,8 +28,10 @@ RUN set -ex; \
     apk add --no-cache --virtual .build-deps \
     $PHPIZE_DEPS \
     freetype-dev \
+    icu-dev \
     imagemagick-dev \
     libjpeg-turbo-dev \
+    libwebp-dev \
     libpng-dev \
     libzip-dev \
     ; \
@@ -36,21 +40,36 @@ RUN set -ex; \
     bcmath \
     exif \
     gd \
+    intl \
     mysqli \
     zip \
     ; \
     pecl install imagick; \
     pecl install redis; \
     docker-php-ext-enable imagick redis; \
+    rm -r /tmp/pear; \
     \
+    # some misbehaving extensions end up outputting to stdout 🙈 (https://github.com/docker-library/wordpress/issues/669#issuecomment-993945967)
+    out="$(php -r 'exit(0);')"; \
+    [ -z "$out" ]; \
+    err="$(php -r 'exit(0);' 3>&1 1>&2 2>&3)"; \
+    [ -z "$err" ]; \
+    \
+    extDir="$(php -r 'echo ini_get("extension_dir");')"; \
+    [ -d "$extDir" ]; \
     runDeps="$( \
-    scanelf --needed --nobanner --format '%n#p' --recursive /usr/local/lib/php/extensions \
+    scanelf --needed --nobanner --format '%n#p' --recursive "$extDir" \
     | tr ',' '\n' \
     | sort -u \
     | awk 'system("[ -e /usr/local/lib/" $1 " ]") == 0 { next } { print "so:" $1 }' \
     )"; \
-    apk add --virtual .wordpress-phpexts-rundeps $runDeps; \
-    apk del .build-deps
+    apk add --no-network --virtual .wordpress-phpexts-rundeps $runDeps; \
+    apk del --no-network .build-deps; \
+    \
+    ! { ldd "$extDir"/*.so | grep 'not found'; }; \
+    # check for output like "PHP Warning:  PHP Startup: Unable to load dynamic library 'foo' (tried: ...)
+    err="$(php --version 3>&1 1>&2 2>&3)"; \
+    [ -z "$err" ]
 
 
 # set recommended PHP.ini settings
@@ -84,7 +103,7 @@ ENV PAGER=less
 VOLUME /var/www/html
 
 USER www-data
-# COPY docker-entrypoint.sh /usr/local/bin/
+COPY docker-entrypoint.sh /usr/local/bin/
 
-# ENTRYPOINT ["docker-entrypoint.sh"]
+ENTRYPOINT ["docker-entrypoint.sh"]
 CMD ["php-fpm"]
