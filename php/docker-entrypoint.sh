@@ -10,6 +10,12 @@ if [ ! -z "${OPCACHE_ENABLE}" ]; then
     sed -i "s/opcache.enable=.*/opcache.enable=${OPCACHE_ENABLE}/" /usr/local/etc/php/conf.d/opcache.ini
 fi
 
+# Set upload file size limit based on the UPLOAD_MAX_FILESIZE environment variable
+if [ ! -z "${UPLOAD_MAX_FILESIZE}" ]; then
+    sed -i "s/upload_max_filesize = .*/upload_max_filesize = ${UPLOAD_MAX_FILESIZE}/" /usr/local/etc/php/conf.d/uploads.ini
+    sed -i "s/post_max_size = .*/post_max_size = ${UPLOAD_MAX_FILESIZE}/" /usr/local/etc/php/conf.d/uploads.ini
+fi
+
 if [ ! -z "${JIT_ENABLE}" ]; then
     if [ "${JIT_ENABLE}" = "1" ]; then
         sed -i "s/opcache.jit_buffer_size=.*/opcache.jit_buffer_size=100M/" /usr/local/etc/php/conf.d/opcache.ini
