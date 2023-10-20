@@ -76,18 +76,12 @@ RUN set -ex; \
 # see https://secure.php.net/manual/en/opcache.installation.php
 RUN set -eux; \
     docker-php-ext-enable opcache;
-COPY opcache.ini /usr/local/etc/php/conf.d/opcache.ini
 
 # Configure Error Logging
 # https://wordpress.org/support/article/editing-wp-config-php/#configure-error-logging
 COPY error-logging.ini /usr/local/etc/php/conf.d/error-logging.ini
 
-# Increase upload limit
-COPY uploads.ini /usr/local/etc/php/conf.d/uploads.ini
-
-COPY memory.ini /usr/local/etc/php/conf.d/memory.ini
-
-# Don't expose PHP
+# Don't expose PHP version
 COPY expose.ini /usr/local/etc/php/conf.d/expose.ini
 
 # Donwload and install composer
