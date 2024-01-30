@@ -43,6 +43,7 @@ RUN set -ex; \
     intl \
     mysqli \
     zip \
+    pdo_mysql \
     ; \
     pecl install imagick; \
     pecl install redis; \
