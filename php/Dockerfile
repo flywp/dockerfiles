@@ -20,10 +20,15 @@ RUN set -e; \
 COPY error-logging.ini expose.ini /usr/local/etc/php/conf.d/
 
 # Install Composer and WP-CLI
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
+RUN set -e; \
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp \
+    && wp package install wp-cli/doctor-command:@stable --allow-root \
+    && mkdir -p /home/www-data/.wp-cli \
+    && mv ~/.wp-cli/packages /home/www-data/.wp-cli/ \
+    && chown -R www-data:www-data /home/www-data/.wp-cli \
     && echo "sendmail_path = '/usr/bin/msmtp -t'" > /usr/local/etc/php/conf.d/mail.ini
 
 # Set pager for WP-CLI
