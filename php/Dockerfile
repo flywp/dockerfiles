@@ -12,7 +12,7 @@ RUN set -e; \
     docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp; \
     docker-php-ext-install -j "$(nproc)" bcmath exif gd intl mysqli zip pcntl pdo_mysql ftp sockets; \
     pecl install imagick-3.6.0 redis apcu timezonedb igbinary ssh2 \
-    && docker-php-ext-enable imagick redis igbinary apcu ssh2; \
+    && docker-php-ext-enable imagick redis igbinary apcu ssh2 opcache; \
     apk del .build-deps; \
     rm -r /tmp/pear;
 
