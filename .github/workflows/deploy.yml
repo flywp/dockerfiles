@@ -1,24 +1,27 @@
-# github action to build the docker image and push it to docker hub
-# it should run on a weekly basis
 name: Build and push Docker image
 on:
   schedule:
     - cron: '0 0 * * 0'
+  push:
+    branches:
+      - 'main'
+    tags:
+      - '*'
+
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout the repo
-        uses: actions/checkout@v3
-
-      - name: Log in to Docker Hub
-        uses: docker/login-action@v2
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-          
-      - name: Build the Docker image
+      - name: Build & Deploy the Docker Image
         run: bash build.sh
-
-      - name: Push the Docker image
-        run: bash deploy.sh
