@@ -1,0 +1,101 @@
+schemaVersion: '2.0.0'
+
+fileExistenceTests:
+  - name: "PHP binary is present"
+    path: "/usr/local/bin/php"
+    shouldExist: true
+  - name: "Composer is present"
+    path: "/usr/local/bin/composer"
+    shouldExist: true
+  - name: "WP-CLI is present"
+    path: "/usr/local/bin/wp"
+    shouldExist: true
+  - name: "Docker entrypoint is present"
+    path: "/usr/local/bin/docker-entrypoint.sh"
+    shouldExist: true
+  - name: "MSMTP is present"
+    path: "/usr/bin/msmtp"
+    shouldExist: true
+  - name: "Git is present"
+    path: "/usr/bin/git"
+    shouldExist: true
+  - name: "MySQL client is present"
+    path: "/usr/bin/mysql"
+    shouldExist: true
+  - name: "Unzip is present"
+    path: "/usr/bin/unzip"
+    shouldExist: true
+  - name: "ImageMagick is present"
+    path: "/usr/bin/convert"
+    shouldExist: true
+
+commandTests:
+  - name: "PHP is installed"
+    command: "php"
+    args: ["-v"]
+    expectedOutput: ["PHP"]
+
+  - name: "Composer is installed"
+    command: "composer"
+    args: ["--version"]
+    expectedOutput: ["Composer"]
+
+  - name: "WP-CLI is installed"
+    command: "wp"
+    args: ["--version"]
+    expectedOutput: ["WP-CLI"]
+
+  - name: "PHP extensions are installed"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: [
+      "json", "mysqli", "curl", "dom", "exif", "fileinfo", "hash", "igbinary", 
+      "imagick", "intl", "mbstring", "openssl", "pcre", "xml", "zip", "apcu", 
+      "OPcache", "redis", "bcmath", "filter", "iconv", "shmop", 
+      "SimpleXML", "sodium", "xmlreader", "zlib", "ssh2", "ftp", "sockets"
+    ]
+
+  - name: "Imagick PHP extension is enabled"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: ["imagick"]
+
+  - name: "Redis PHP extension is enabled"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: ["redis"]
+
+  - name: "Relay PHP extension is enabled"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: ["relay"]
+
+  - name: "APCu PHP extension is enabled"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: ["apcu"]
+
+  - name: "WP-CLI doctor package is installed"
+    command: "wp"
+    args: ["package", "list"]
+    expectedOutput: ["doctor"]
+
+  - name: "Git is installed"
+    command: "git"
+    args: ["--version"]
+    expectedOutput: ["git version"]
+
+  - name: "MySQL client is installed"
+    command: "mysql"
+    args: ["--version"]
+    expectedOutput: ["mysql  Ver"]
+
+  - name: "Unzip is installed"
+    command: "unzip"
+    args: ["-v"]
+    expectedOutput: ["UnZip"]
+
+  - name: "ImageMagick is installed"
+    command: "convert"
+    args: ["-version"]
+    expectedOutput: ["ImageMagick"]

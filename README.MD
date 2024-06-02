@@ -56,3 +56,12 @@ services:
     volumes:
       - "./app:/var/www/html"
 ```
+
+### Testing Images
+
+Install [Container Structure Test](https://github.com/GoogleContainerTools/container-structure-test) and run the tests:
+
+
+```bash
+container-structure-test test --image meghsh/php:8.2 --config structure-test.yaml
+```
