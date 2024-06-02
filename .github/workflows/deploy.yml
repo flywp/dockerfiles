@@ -1,4 +1,4 @@
-name: Build and push Docker image
+name: Build, Test, and Push Docker image
 on:
   workflow_dispatch: 
   schedule:
@@ -31,7 +31,31 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push PHP Docker images
+      - name: Build PHP Docker image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          file: php/Dockerfile
+          context: php
+          platforms: linux/amd64,linux/arm64
+          push: false
+          tags: meghsh/php:${{ matrix.php_version }}
+          build-args: |
+            PHP_VERSION=${{ matrix.php_version }}
+
+      - name: Install Container Structure Test
+        run: |
+          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+
+      - name: Run Container Structure Tests
+        id: test
+        run: |
+          container-structure-test test --image meghsh/php:${{ matrix.php_version }} --config structure-test.yaml
+
+      - name: Push PHP Docker image
+        if: success()
         uses: docker/build-push-action@v5
         with:
           file: php/Dockerfile
