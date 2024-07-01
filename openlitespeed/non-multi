@@ -1,0 +1,59 @@
+FROM debian:bullseye-slim
+
+# Arguments for PHP version and OLS version
+ARG PHP_VERSION=lsphp82
+ARG OLS_VERSION=1.8.1
+ARG TARGET_PLATFORM="linux/amd64"
+
+# Environment variables
+ENV VIRTUAL_HOST=flywp.local
+
+# Install required packages and PHP
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends wget curl cron tzdata zip unzip ghostscript git gnupg2 ca-certificates lsb-release apt-transport-https && \
+    if [ "$TARGET_PLATFORM" = "linux/amd64" ]; then \
+        wget "https://openlitespeed.org/packages/openlitespeed-$OLS_VERSION-x86_64-linux.tgz" && \
+        tar xzf openlitespeed-$OLS_VERSION-x86_64-linux.tgz && cd openlitespeed && ./install.sh && \
+        echo 'cloud-docker' > /usr/local/lsws/PLAT && rm -rf /openlitespeed && rm /openlitespeed-$OLS_VERSION-x86_64-linux.tgz; \
+    elif [ "$TARGET_PLATFORM" = "linux/arm64" ]; then \
+        wget "https://openlitespeed.org/packages/openlitespeed-$OLS_VERSION-aarch64-linux.tgz" && \
+        tar xzf openlitespeed-$OLS_VERSION-aarch64-linux.tgz && cd openlitespeed && ./install.sh && \
+        echo 'cloud-docker' > /usr/local/lsws/PLAT && rm -rf /openlitespeed && rm /openlitespeed-$OLS_VERSION-aarch64-linux.tgz; \
+    fi && \
+    wget -O - https://repo.litespeed.sh | sh && \
+    apt-get update && \
+    apt-get install -y --no-install-recommends $PHP_VERSION $PHP_VERSION-common $PHP_VERSION-mysql $PHP_VERSION-opcache \
+    $PHP_VERSION-curl $PHP_VERSION-apcu $PHP_VERSION-imagick $PHP_VERSION-redis $PHP_VERSION-intl && \
+    ln -s /usr/local/lsws/$PHP_VERSION/bin/php /usr/bin/php && \
+    apt-get purge -y --auto-remove && \
+    rm -rf /var/lib/apt/lists/* && \
+    apt-get clean
+
+# Install Composer
+RUN wget -O composer-setup.php https://getcomposer.org/installer && \
+    php composer-setup.php --install-dir=/usr/local/bin --filename=composer && \
+    rm composer-setup.php
+
+# Install WP-CLI
+RUN wget -O /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar && \
+    chmod +x /usr/local/bin/wp
+
+# Set work directory
+WORKDIR /var/www/html
+
+# Copy configuration files
+COPY httpd_config.conf /usr/local/lsws/conf/httpd_config.conf
+COPY vhconf.conf /usr/local/lsws/conf/vhosts/flywp/vhconf.conf
+
+# Expose port 80
+EXPOSE 80
+
+# Change ownership
+RUN chown -R www-data:www-data /usr/local/lsws /var/www/html
+
+# Set entrypoint and CMD
+ENTRYPOINT ["/usr/local/lsws/bin/lswsctrl"]
+CMD ["start"]
+
+# Set www-data as the user
+USER www-data
