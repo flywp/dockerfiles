@@ -10,15 +10,12 @@ on:
     tags:
       - "*"
 
-env:
-  DOCKER_ORG_USERNAME: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}
-
 jobs:
   build-php:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php_version: ["7.4", "8.0", "8.1", "8.2", "8.3"]
+        php_version: ["7.4"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -43,7 +40,7 @@ jobs:
           context: php
           platforms: linux/amd64,linux/arm64
           push: false
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
+          tags: itsrafsanjani/php:${{ matrix.php_version }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
 
@@ -56,7 +53,7 @@ jobs:
       - name: Run Container Structure Tests
         id: test
         run: |
-          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }} --config structure-test.yaml
+          container-structure-test test --image itsrafsanjani/php:${{ matrix.php_version }} --config structure-test.yaml
 
       - name: Push PHP Docker image
         if: success()
@@ -66,6 +63,6 @@ jobs:
           context: php
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
+          tags: itsrafsanjani/php:${{ matrix.php_version }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
