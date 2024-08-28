@@ -11,7 +11,7 @@ ARG TARGETPLATFORM
 # Install necessary packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl cron less tzdata gnupg2 ca-certificates procps libatomic1 \
-    msmtp \
+    msmtp git \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install OpenLiteSpeed

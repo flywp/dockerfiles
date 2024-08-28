@@ -1,0 +1,62 @@
+schemaVersion: '2.0.0'
+
+fileExistenceTests:
+  - name: "PHP binary is present"
+    path: "/usr/bin/php"
+    shouldExist: true
+  - name: "Composer is present"
+    path: "/usr/local/bin/composer"
+    shouldExist: true
+  - name: "WP-CLI is present"
+    path: "/usr/local/bin/wp"
+    shouldExist: true
+  - name: "Docker entrypoint is present"
+    path: "/entrypoint.sh"
+    shouldExist: true
+  - name: "MSMTP is present"
+    path: "/usr/bin/msmtp"
+    shouldExist: true
+  - name: "Git is present"
+    path: "/usr/bin/git"
+    shouldExist: true
+
+commandTests:
+  - name: "PHP is installed"
+    command: "php"
+    args: ["-v"]
+    expectedOutput: ["PHP"]
+
+  - name: "Composer is installed"
+    command: "composer"
+    args: ["--version"]
+    expectedOutput: ["Composer"]
+
+  - name: "WP-CLI is installed"
+    command: "wp"
+    args: ["--version", "--allow-root"]
+    expectedOutput: ["WP-CLI"]
+
+  - name: "PHP extensions are installed"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: [
+      "json", "mysqli", "curl", "dom", "exif", "fileinfo", "hash", "igbinary", 
+      "imagick", "intl", "mbstring", "openssl", "pcre", "xml", "zip", 
+      "OPcache", "redis", "bcmath", "filter", "iconv", 
+      "SimpleXML", "sodium", "xmlreader", "zlib", "ftp", "sockets"
+    ]
+
+  - name: "Imagick PHP extension is enabled"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: ["imagick"]
+
+  - name: "Redis PHP extension is enabled"
+    command: "php"
+    args: ["-m"]
+    expectedOutput: ["redis"]
+
+  - name: "Git is installed"
+    command: "git"
+    args: ["--version"]
+    expectedOutput: ["git version"]
