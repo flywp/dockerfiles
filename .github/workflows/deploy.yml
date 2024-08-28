@@ -33,6 +33,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Set up build environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y wget gnupg2 ca-certificates
+          sudo wget -O - https://repo.litespeed.sh | sudo bash
+
       - name: Build Docker image
         run: |
           if [ "${{ matrix.image_type }}" = "openlitespeed" ]; then
