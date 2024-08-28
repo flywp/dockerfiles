@@ -37,14 +37,16 @@ jobs:
         run: |
           if [ "${{ matrix.image_type }}" = "openlitespeed" ]; then
             LSPHP="lsphp${{ matrix.php_version[0] }}${{ matrix.php_version[2] }}"
-            docker build -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
+            docker build \
               --build-arg PHP_VERSION=${{ matrix.php_version }} \
               --build-arg LSPHP=$LSPHP \
+              -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
               -f ${{ matrix.image_type }}/Dockerfile \
               ${{ matrix.image_type }}
           else
-            docker build -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
+            docker build \
               --build-arg PHP_VERSION=${{ matrix.php_version }} \
+              -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
               -f ${{ matrix.image_type }}/Dockerfile \
               ${{ matrix.image_type }}
           fi
