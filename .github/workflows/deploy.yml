@@ -175,7 +175,7 @@ jobs:
           tags: ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
-            ${{ matrix.image_type == 'openlitespeed' && format('LSPHP=lsphp{0}', replace(matrix.php_version, '.', '')) || '' }}
+            ${{ matrix.image_type == 'openlitespeed' && format('LSPHP=lsphp{0}{1}', matrix.php_version[0], matrix.php_version[2]) || '' }}
           cache-from: |
             type=registry,ref=${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }}
             type=local,src=/tmp/.buildx-cache-${{ matrix.image_type }}
