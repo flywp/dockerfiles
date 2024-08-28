@@ -11,6 +11,7 @@ ARG TARGETPLATFORM
 # Install necessary packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl cron less tzdata gnupg2 ca-certificates procps libatomic1 \
+    msmtp \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install OpenLiteSpeed
@@ -56,6 +57,9 @@ RUN mkdir -p /var/www/html/public /var/www/html/logs \
 
 RUN echo "# Custom configurations" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini && \
     echo "include_dir /usr/local/etc/php/custom-conf.d" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini
+
+# Configure PHP to use msmtp
+RUN echo "sendmail_path = /usr/bin/msmtp -t" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini
 
 WORKDIR /var/www/html
 
