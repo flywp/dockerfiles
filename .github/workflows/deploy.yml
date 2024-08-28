@@ -33,13 +33,11 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Build PHP Docker image
-        id: build
         uses: docker/build-push-action@v5
         with:
           file: php/Dockerfile
           context: php
-          platforms: linux/amd64,linux/arm64
-          push: false
+          load: true
           tags: itsrafsanjani/php:${{ matrix.php_version }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
@@ -51,7 +49,6 @@ jobs:
           sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
 
       - name: Run Container Structure Tests
-        id: test
         run: |
           container-structure-test test --image itsrafsanjani/php:${{ matrix.php_version }} --config structure-test.yaml
 
@@ -66,3 +63,4 @@ jobs:
           tags: itsrafsanjani/php:${{ matrix.php_version }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+  
