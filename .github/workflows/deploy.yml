@@ -117,7 +117,10 @@ jobs:
             LSPHP=${{ matrix.lsphp }}
           cache-from: type=local,src=/tmp/.buildx-cache-ols
           cache-to: type=local,dest=/tmp/.buildx-cache-ols-new,mode=max
-          outputs: type=docker,dest=/tmp/ols-image-${{ matrix.php_version }}.tar
+          outputs: type=docker
+
+      - name: List Docker images after build
+        run: docker images
 
       - name: Move cache
         run: |
@@ -133,6 +136,11 @@ jobs:
       - name: Run Container Structure Tests
         run: |
           container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }} --config ols-structure-test.yaml
+        env:
+          DOCKER_CLI_EXPERIMENTAL: enabled
+
+      - name: Save Docker image
+        run: docker save ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }} > /tmp/ols-image-${{ matrix.php_version }}.tar
 
       - name: Upload image artifact
         uses: actions/upload-artifact@v3
