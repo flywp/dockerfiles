@@ -40,10 +40,12 @@ jobs:
             docker build -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
               --build-arg PHP_VERSION=${{ matrix.php_version }} \
               --build-arg LSPHP=$LSPHP \
+              -f ${{ matrix.image_type }}/Dockerfile \
               ${{ matrix.image_type }}
           else
             docker build -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
               --build-arg PHP_VERSION=${{ matrix.php_version }} \
+              -f ${{ matrix.image_type }}/Dockerfile \
               ${{ matrix.image_type }}
           fi
 
