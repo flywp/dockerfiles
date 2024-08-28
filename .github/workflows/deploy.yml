@@ -14,142 +14,7 @@ env:
   DOCKER_ORG_USERNAME: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}
 
 jobs:
-  build-and-test-php:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php_version: ["7.4", "8.0", "8.1", "8.2", "8.3"]
-      fail-fast: false
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache-php
-          key: ${{ runner.os }}-buildx-php-${{ matrix.php_version }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-php-${{ matrix.php_version }}-
-
-      - name: Build PHP Docker image
-        uses: docker/build-push-action@v5
-        with:
-          file: php/Dockerfile
-          context: php
-          load: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
-          build-args: |
-            PHP_VERSION=${{ matrix.php_version }}
-          cache-from: type=local,src=/tmp/.buildx-cache-php
-          cache-to: type=local,dest=/tmp/.buildx-cache-php-new,mode=max
-          outputs: type=docker
-
-      - name: List Docker images after build
-        run: docker images
-
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache-php
-          mv /tmp/.buildx-cache-php-new /tmp/.buildx-cache-php
-
-      - name: Install Container Structure Test
-        run: |
-          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-          chmod +x container-structure-test-linux-amd64
-          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
-
-      - name: Run Container Structure Tests
-        run: |
-          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }} --config php-structure-test.yaml
-        env:
-          DOCKER_CLI_EXPERIMENTAL: enabled
-
-      - name: Save Docker image
-        run: docker save ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }} > /tmp/php-image-${{ matrix.php_version }}.tar
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: php-image-${{ matrix.php_version }}
-          path: /tmp/php-image-${{ matrix.php_version }}.tar
-
-  build-and-test-openlitespeed:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        php_version: ["7.4", "8.1", "8.2"]
-        include:
-          - php_version: "7.4"
-            lsphp: "lsphp74"
-          - php_version: "8.1"
-            lsphp: "lsphp81"
-          - php_version: "8.2"
-            lsphp: "lsphp82"
-      fail-fast: false
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Cache Docker layers
-        uses: actions/cache@v3
-        with:
-          path: /tmp/.buildx-cache-ols
-          key: ${{ runner.os }}-buildx-ols-${{ matrix.php_version }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-buildx-ols-${{ matrix.php_version }}-
-
-      - name: Build OpenLiteSpeed Docker image
-        uses: docker/build-push-action@v5
-        with:
-          file: openlitespeed/Dockerfile
-          context: openlitespeed
-          load: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }}
-          build-args: |
-            PHP_VERSION=${{ matrix.php_version }}
-            LSPHP=${{ matrix.lsphp }}
-          cache-from: type=local,src=/tmp/.buildx-cache-ols
-          cache-to: type=local,dest=/tmp/.buildx-cache-ols-new,mode=max
-          outputs: type=docker
-
-      - name: List Docker images after build
-        run: docker images
-
-      - name: Move cache
-        run: |
-          rm -rf /tmp/.buildx-cache-ols
-          mv /tmp/.buildx-cache-ols-new /tmp/.buildx-cache-ols
-
-      - name: Install Container Structure Test
-        run: |
-          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-          chmod +x container-structure-test-linux-amd64
-          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
-
-      - name: Run Container Structure Tests
-        run: |
-          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }} --config ols-structure-test.yaml
-        env:
-          DOCKER_CLI_EXPERIMENTAL: enabled
-
-      - name: Save Docker image
-        run: docker save ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }} > /tmp/ols-image-${{ matrix.php_version }}.tar
-
-      - name: Upload image artifact
-        uses: actions/upload-artifact@v3
-        with:
-          name: ols-image-${{ matrix.php_version }}
-          path: /tmp/ols-image-${{ matrix.php_version }}.tar
-
-  push-images:
-    needs: [build-and-test-php, build-and-test-openlitespeed]
+  build-test-push:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -165,11 +30,32 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        run: |
+          if [ "${{ matrix.image_type }}" = "openlitespeed" ]; then
+            LSPHP="lsphp${{ matrix.php_version[0] }}${{ matrix.php_version[2] }}"
+            docker build -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
+              --build-arg PHP_VERSION=${{ matrix.php_version }} \
+              --build-arg LSPHP=$LSPHP \
+              ${{ matrix.image_type }}
+          else
+            docker build -t ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} \
+              --build-arg PHP_VERSION=${{ matrix.php_version }} \
+              ${{ matrix.image_type }}
+          fi
+
+      - name: Install Container Structure Test
+        run: |
+          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+          chmod +x container-structure-test-linux-amd64
+          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+
+      - name: Run Container Structure Tests
+        run: |
+          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} --config ${{ matrix.image_type }}-structure-test.yaml
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -177,28 +63,6 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Download image artifact
-        uses: actions/download-artifact@v3
-        with:
-          name: ${{ matrix.image_type }}-image-${{ matrix.php_version }}
-          path: /tmp
-
-      - name: Load image
-        run: |
-          docker load --input /tmp/${{ matrix.image_type }}-image-${{ matrix.php_version }}.tar
-
       - name: Push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: ${{ matrix.image_type }}
-          file: ${{ matrix.image_type }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }}
-          build-args: |
-            PHP_VERSION=${{ matrix.php_version }}
-            ${{ matrix.image_type == 'openlitespeed' && format('LSPHP=lsphp{0}{1}', matrix.php_version[0], matrix.php_version[2]) || '' }}
-          cache-from: |
-            type=registry,ref=${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }}
-            type=local,src=/tmp/.buildx-cache-${{ matrix.image_type }}
-          cache-to: type=inline
+        run: |
+          docker push ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }}
