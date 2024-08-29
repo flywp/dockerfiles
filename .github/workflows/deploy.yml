@@ -14,18 +14,11 @@ env:
   DOCKER_ORG_USERNAME: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}
 
 jobs:
-  build-test-push:
+  build-php:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        image_type: ["php", "openlitespeed"]
-        php_version: ["7.4", "8.0", "8.1", "8.2", "8.3"]
-        exclude:
-          - image_type: openlitespeed
-            php_version: "8.0"
-          - image_type: openlitespeed
-            php_version: "8.3"
-      fail-fast: false
+        php_version: ["7.4"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -42,17 +35,15 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and push
+      - name: Build PHP Docker image
         uses: docker/build-push-action@v5
         with:
-          context: ${{ matrix.image_type }}
-          file: ${{ matrix.image_type }}/Dockerfile
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }}
+          file: php/Dockerfile
+          context: php
+          load: true
+          tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
-            ${{ matrix.image_type == 'openlitespeed' && format('LSPHP=lsphp{0}{1}', matrix.php_version[0], matrix.php_version[2]) || '' }}
 
       - name: Install Container Structure Test
         run: |
@@ -62,5 +53,16 @@ jobs:
 
       - name: Run Container Structure Tests
         run: |
-          docker pull ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }}
-          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/${{ matrix.image_type }}:${{ matrix.php_version }} --config ${{ matrix.image_type }}-structure-test.yaml
+          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }} --config php-structure-test.yaml
+
+      - name: Push PHP Docker image
+        if: success()
+        uses: docker/build-push-action@v5
+        with:
+          file: php/Dockerfile
+          context: php
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
+          build-args: |
+            PHP_VERSION=${{ matrix.php_version }}
