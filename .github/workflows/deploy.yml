@@ -68,18 +68,18 @@ jobs:
             PHP_VERSION=${{ matrix.php_version }}
 
   build-openlitespeed:
-  runs-on: ubuntu-latest
-  strategy:
-    matrix:
-      php_version: ["7.4", "8.1", "8.2"]
-      include:
-        - php_version: "7.4"
-          lsphp: "lsphp74"
-        - php_version: "8.1"
-          lsphp: "lsphp81"
-        - php_version: "8.2"
-          lsphp: "lsphp82"
-  steps:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php_version: ["7.4", "8.1", "8.2"]
+        include:
+          - php_version: "7.4"
+            lsphp: "lsphp74"
+          - php_version: "8.1"
+            lsphp: "lsphp81"
+          - php_version: "8.2"
+            lsphp: "lsphp82"
+    steps:
     - name: Checkout
       uses: actions/checkout@v4
 
