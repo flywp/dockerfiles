@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        php_version: ["7.4"]
+        php_version: ["7.4", "8.0", "8.1", "8.2", "8.3"]
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -66,3 +66,65 @@ jobs:
           tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+
+  build-openlitespeed:
+  runs-on: ubuntu-latest
+  strategy:
+    matrix:
+      php_version: ["7.4", "8.1", "8.2"]
+      include:
+        - php_version: "7.4"
+          lsphp: "lsphp74"
+        - php_version: "8.1"
+          lsphp: "lsphp81"
+        - php_version: "8.2"
+          lsphp: "lsphp82"
+  steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v3
+      with:
+        username: ${{ secrets.DOCKER_USERNAME }}
+        password: ${{ secrets.DOCKER_PASSWORD }}
+
+    - name: Build OpenLiteSpeed Docker image
+      uses: docker/build-push-action@v5
+      with:
+        file: openlitespeed/Dockerfile
+        context: openlitespeed
+        load: true
+        tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
+        build-args: |
+          PHP_VERSION=${{ matrix.php_version }}
+          LSPHP=${{ matrix.lsphp }}
+
+    - name: Install Container Structure Test
+      run: |
+        curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+        chmod +x container-structure-test-linux-amd64
+        sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+
+    - name: Run Container Structure Tests
+      run: |
+        container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }} --config ols-structure-test.yaml
+
+    - name: Push OpenLiteSpeed Docker image
+      if: success()
+      uses: docker/build-push-action@v5
+      with:
+        file: openlitespeed/Dockerfile
+        context: openlitespeed
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }}
+        build-args: |
+          PHP_VERSION=${{ matrix.php_version }}
+          LSPHP=${{ matrix.lsphp }}
