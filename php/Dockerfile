@@ -55,6 +55,9 @@ RUN apk del .build-deps .phpize-deps \
 # Set recommended PHP.ini settings and configure error logging
 COPY error-logging.ini expose.ini /usr/local/etc/php/conf.d/
 
+# Configure sendmail path for MSMTP
+RUN echo "sendmail_path = '/usr/bin/msmtp -t'" > /usr/local/etc/php/conf.d/mail.ini
+
 # Copy Composer and WP-CLI from their respective stages
 COPY --from=composer_builder /usr/local/bin/composer /usr/local/bin/composer
 COPY --from=wpcli_builder /usr/local/bin/wp /usr/local/bin/wp
