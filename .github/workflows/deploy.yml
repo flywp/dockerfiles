@@ -101,7 +101,7 @@ jobs:
         file: openlitespeed/Dockerfile
         context: openlitespeed
         load: true
-        tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
+        tags: ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }}
         build-args: |
           PHP_VERSION=${{ matrix.php_version }}
           LSPHP=${{ matrix.lsphp }}
@@ -114,7 +114,7 @@ jobs:
 
     - name: Run Container Structure Tests
       run: |
-        container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }} --config ols-structure-test.yaml
+        container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }} --config ols-structure-test.yaml
 
     - name: Push OpenLiteSpeed Docker image
       if: success()
