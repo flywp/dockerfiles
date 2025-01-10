@@ -85,10 +85,15 @@ commandTests:
     args: ["--version"]
     expectedOutput: ["git version"]
 
-  - name: "MySQL client is installed"
-    command: "mysql"
+  # - name: "MySQL client is installed"
+  #   command: "bash"
+  #   args: ["-c", "mysql --version 2>/dev/null"]
+  #   expectedOutput: ["mysql from", "client"]
+
+  - name: "MariaDB client is installed"
+    command: "mariadb"
     args: ["--version"]
-    expectedOutput: ["mysql  Ver"]
+    expectedOutput: ["mariadb"]
 
   - name: "Unzip is installed"
     command: "unzip"
