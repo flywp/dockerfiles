@@ -58,6 +58,8 @@ jobs:
             lsphp: "lsphp81"
           - php_version: "8.2"
             lsphp: "lsphp82"
+          - php_version: "8.3"
+            lsphp: "lsphp83"
     steps:
     - name: Checkout
       uses: actions/checkout@v4
