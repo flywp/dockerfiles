@@ -52,6 +52,8 @@ jobs:
     strategy:
       matrix:
         include:
+          - php_version: "7.4"
+            lsphp: "lsphp74"
           - php_version: "8.1"
             lsphp: "lsphp81"
           - php_version: "8.2"
