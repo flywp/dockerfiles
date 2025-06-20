@@ -78,13 +78,7 @@ RUN chown -R lsadm:lsadm /usr/local/lsws \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-# TEmp
-RUN chown -R lsadm:lsadm /usr/local/lsws
-RUN chmod 777 /usr/local/lsws/bin/
-RUN chown -R www-data:www-data /usr/local/lsws/conf/
-
 
 EXPOSE 80
-#USER www-data
 
 ENTRYPOINT ["/entrypoint.sh"]
