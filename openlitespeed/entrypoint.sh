@@ -1,6 +1,19 @@
 #!/bin/bash
 set -e
 
+echo "www-data UID is: $(id -u www-data) and GID $(id -g www-data)"
+
+# Check and set PGID and PUID
+if [ -z "$PGID" ] || [ -z "$PUID" ]; then
+    echo "PGID or PUID not set, using defaults."
+    PGID=1000
+    PUID=1000
+fi
+echo "setting UID to $PGID and GUID $PUID"
+
+groupmod -g $PGID www-data
+usermod -u $PUID www-data
+
 # Ensure correct permissions
 chown -R www-data:www-data /var/www/html
 chown -R lsadm:lsadm /usr/local/lsws

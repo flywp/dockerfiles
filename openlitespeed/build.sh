@@ -3,7 +3,7 @@
 # Set variables
 DOCKER_HUB_USERNAME="meghsh"
 IMAGE_NAME="openlitespeed"
-OLS_VERSION="1.8.1"
+OLS_VERSION="1.8.3"
 
 # Ensure BuildKit is enabled
 export DOCKER_BUILDKIT=1
