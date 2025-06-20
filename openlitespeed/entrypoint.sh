@@ -21,8 +21,8 @@ usermod -u $PUID www-data
 # Ensure correct permissions
 chown -R www-data:www-data /var/www/html
 chown -R lsadm:lsadm /usr/local/lsws
-# find /var/www/html -type d -exec chmod 755 {} \;
-# find /var/www/html -type f -exec chmod 644 {} \;
+find /var/www/html -type d -exec chmod 755 {} \;
+find /var/www/html -type f -exec chmod 644 {} \;
 
 
 # Start OpenLiteSpeed
