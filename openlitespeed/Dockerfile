@@ -11,7 +11,7 @@ ARG TARGETPLATFORM
 # Install necessary packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     wget curl cron less tzdata gnupg2 ca-certificates procps libatomic1 \
-    msmtp git \
+    msmtp git mysql-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Download and install OpenLiteSpeed
@@ -48,8 +48,8 @@ RUN wget -qO /usr/local/bin/composer https://getcomposer.org/download/latest-sta
     && chmod +x /usr/local/bin/wp \
     && echo "alias wp='wp --allow-root'" >> /root/.bashrc
 
-# Set up www-data user
-RUN usermod -u 1000 www-data
+# Clearing Group ID 1000 for later use
+RUN groupmod -g 999 lsadm
 
 # Create necessary directories
 RUN mkdir -p /var/www/html/public /var/www/html/logs \
@@ -78,6 +78,13 @@ RUN chown -R lsadm:lsadm /usr/local/lsws \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
+# TEmp
+RUN chown -R lsadm:lsadm /usr/local/lsws
+RUN chmod 777 /usr/local/lsws/bin/
+RUN chown -R www-data:www-data /usr/local/lsws/conf/
+
+
 EXPOSE 80
+#USER www-data
 
 ENTRYPOINT ["/entrypoint.sh"]
