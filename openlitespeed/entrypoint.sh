@@ -3,7 +3,6 @@ set -e
 
 echo "www-data UID is: $(id -u www-data) and GID $(id -g www-data)"
 
-
 # Check and set PGID and PUID
 if [ -z "$PGID" ] || [ -z "$PUID" ]; then
     echo "PGID or PUID not set, using defaults."
@@ -15,15 +14,11 @@ echo "setting UID to $PGID and GUID $PUID"
 groupmod -g $PGID www-data
 usermod -u $PUID www-data
 
-# echo "www-data group ID is: $(id -u www-data) and $(id -g www-data)"
-# echo "$(whoami) group ID is: $(id -u) and $(id -g)"
-
 # Ensure correct permissions
 chown -R www-data:www-data /var/www/html
 chown -R lsadm:lsadm /usr/local/lsws
 find /var/www/html -type d -exec chmod 755 {} \;
 find /var/www/html -type f -exec chmod 644 {} \;
-
 
 # Start OpenLiteSpeed
 echo "Starting OpenLiteSpeed..."
