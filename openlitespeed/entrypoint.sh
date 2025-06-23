@@ -14,7 +14,7 @@ if [ -z "$PUID" ]; then
     PUID=1000
 fi
 
-echo "setting UID to $PGID and GUID $PUID"
+echo "setting GID to $PGID and UID to $PUID"
 
 groupmod -g $PGID www-data
 usermod -u $PUID www-data
