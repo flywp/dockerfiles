@@ -3,12 +3,17 @@ set -e
 
 echo "www-data UID is: $(id -u www-data) and GID $(id -g www-data)"
 
-# Check and set PGID and PUID
-if [ -z "$PGID" ] || [ -z "$PUID" ]; then
-    echo "PGID or PUID not set, using defaults."
+# Check and set PGID and PUID separately
+if [ -z "$PGID" ]; then
+    echo "PGID not set, using default."
     PGID=1000
+fi
+
+if [ -z "$PUID" ]; then
+    echo "PUID not set, using default."
     PUID=1000
 fi
+
 echo "setting UID to $PGID and GUID $PUID"
 
 groupmod -g $PGID www-data
