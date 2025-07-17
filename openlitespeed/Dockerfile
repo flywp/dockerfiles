@@ -78,7 +78,6 @@ RUN chown -R lsadm:lsadm /usr/local/lsws \
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-
 EXPOSE 80
 
 ENTRYPOINT ["/entrypoint.sh"]
