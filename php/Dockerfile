@@ -1,13 +1,13 @@
 ARG PHP_VERSION=7.4
 
 # Stage for Composer
-FROM php:${PHP_VERSION}-cli-alpine as composer_builder
+FROM php:${PHP_VERSION}-cli-alpine AS composer_builder
 RUN apk add --no-cache curl \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && rm -rf /var/cache/apk/*
 
 # Stage for WP-CLI
-FROM php:${PHP_VERSION}-cli-alpine as wpcli_builder
+FROM php:${PHP_VERSION}-cli-alpine AS wpcli_builder
 RUN apk add --no-cache curl \
     && curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x wp-cli.phar \
@@ -19,7 +19,7 @@ RUN apk add --no-cache curl \
     && rm -rf /var/cache/apk/*
 
 # Main build stage
-FROM php:${PHP_VERSION}-fpm-alpine as builder
+FROM php:${PHP_VERSION}-fpm-alpine AS builder
 
 LABEL maintainer="Tareq Hasan <tareq@wedevs.com>"
 
