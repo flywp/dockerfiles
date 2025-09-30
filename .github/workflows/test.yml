@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   DOCKER_ORG_USERNAME: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}
 
