@@ -13,8 +13,7 @@ RUN apk add --no-cache curl git \
     && curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp \
-    && git clone https://github.com/wp-cli/doctor-command.git /tmp/doctor-command \
-    && wp --allow-root package install /tmp/doctor-command \
+    && wp --allow-root package install https://github.com/wp-cli/doctor-command.git \
     && mkdir -p /home/www-data/.wp-cli \
     && mv ~/.wp-cli/packages /home/www-data/.wp-cli/ \
     && chown -R www-data:www-data /home/www-data/.wp-cli \
