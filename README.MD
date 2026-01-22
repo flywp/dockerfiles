@@ -12,6 +12,7 @@ Docker images for PHP-FPM.
 - PHP 8.2
 - PHP 8.3
 - PHP 8.4
+- PHP 8.5
 
 ### Getting the images
 
@@ -30,6 +31,9 @@ docker image pull meghsh/php:8.3
 
 # PHP 8.4
 docker image pull meghsh/php:8.4
+
+# PHP 8.5
+docker image pull meghsh/php:8.5
 ```
 
 ### Using the images
@@ -51,6 +55,9 @@ docker run --rm meghsh/php:8.3 bash -c "php -v"
 
 # PHP 8.4
 docker run --rm meghsh/php:8.4 bash -c "php -v"
+
+# PHP 8.5
+docker run --rm meghsh/php:8.5 bash -c "php -v"
 ```
 
 With docker-compose:
