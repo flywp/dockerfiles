@@ -8,3 +8,4 @@ docker build --platform linux/amd64,linux/arm64 --build-arg PHP_VERSION=8.1 -t m
 docker build --platform linux/amd64,linux/arm64 --build-arg PHP_VERSION=8.2 -t meghsh/php:8.2 -f php/Dockerfile php --push
 docker build --platform linux/amd64,linux/arm64 --build-arg PHP_VERSION=8.3 -t meghsh/php:8.3 -f php/Dockerfile php --push
 docker build --platform linux/amd64,linux/arm64 --build-arg PHP_VERSION=8.4 -t meghsh/php:8.4 -f php/Dockerfile php --push
+docker build --platform linux/amd64,linux/arm64 --build-arg PHP_VERSION=8.5 -t meghsh/php:8.5 -f php/Dockerfile php --push
