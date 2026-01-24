@@ -32,7 +32,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build PHP Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: php/Dockerfile
           context: php
@@ -77,7 +77,7 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Build OpenLiteSpeed Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           file: openlitespeed/Dockerfile
           context: openlitespeed
