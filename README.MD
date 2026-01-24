@@ -76,5 +76,60 @@ Install [Container Structure Test](https://github.com/GoogleContainerTools/conta
 
 
 ```bash
-container-structure-test test --image meghsh/php:8.2 --config structure-test.yaml
+container-structure-test test --image meghsh/php:8.2 --config php-structure-test.yaml
+```
+
+### Node.js (Alpine)
+
+Docker images for Node.js (Alpine variant), including `yarn`, `pnpm`, and `vite`.
+
+#### Supported Versions
+
+- Node 18
+- Node 20
+- Node 22
+- Node 24
+- Node 25
+
+### Getting the images
+
+```bash
+# Node 25 (Latest)
+docker image pull meghsh/node:25
+
+# Node 22 (LTS)
+docker image pull meghsh/node:22
+```
+
+### Using the images
+
+One-off commands:
+
+```bash
+docker run --rm meghsh/node:25 node -v
+docker run --rm meghsh/node:25 yarn -v
+docker run --rm meghsh/node:25 pnpm -v
+```
+
+With docker-compose:
+
+```yaml
+services:
+  node:
+    image: "meghsh/node:25"
+    volumes:
+      - "./app:/var/www/html"
+    command: npm run dev
+```
+
+### Testing Node.js Images
+
+To verify the Node.js image structure and installed tools:
+
+```bash
+# Build the image locally (optional, if testing changes)
+./node/build.sh
+
+# Run structure tests
+container-structure-test test --image meghsh/node:25 --config node-structure-test.yaml
 ```
