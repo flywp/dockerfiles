@@ -1,0 +1,28 @@
+schemaVersion: '2.0.0'
+
+commandTests:
+  - name: "Node is installed"
+    command: "node"
+    args: ["-v"]
+    expectedOutput: ["v"]
+
+  - name: "Yarn is installed"
+    command: "yarn"
+    args: ["-v"]
+    # expectedOutput: ["1."] # Yarn version might vary, just checking it runs
+
+  - name: "PNPM is installed"
+    command: "pnpm"
+    args: ["-v"]
+
+  - name: "Vite is installed"
+    command: "vite"
+    args: ["-v"]
+    expectedOutput: ["vite"]
+
+  - name: "Git is installed"
+    command: "git"
+    args: ["--version"]
+    expectedOutput: ["git version"]
+
+
