@@ -8,13 +8,17 @@ RUN apk add --no-cache curl \
 
 # Stage for WP-CLI
 FROM php:${PHP_VERSION}-cli-alpine AS wpcli_builder
-RUN apk add --no-cache curl \
+RUN apk add --no-cache curl unzip \
+    && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
     && curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp \
-    && wp package install wp-cli/doctor-command:@stable --allow-root \
+    && mkdir -p /root/.wp-cli/packages \
+    && cd /root/.wp-cli/packages \
+    && composer init --name=wp-cli/wp-cli-packages --stability=stable --no-interaction \
+    && composer require wp-cli/doctor-command:@stable --prefer-dist --no-interaction \
     && mkdir -p /home/www-data/.wp-cli \
-    && mv ~/.wp-cli/packages /home/www-data/.wp-cli/ \
+    && mv /root/.wp-cli/packages /home/www-data/.wp-cli/ \
     && chown -R www-data:www-data /home/www-data/.wp-cli \
     && rm -rf /var/cache/apk/*
 
