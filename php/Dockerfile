@@ -33,11 +33,25 @@ RUN set -e && \
     autoconf g++ make bash sed ghostscript mysql-client imagemagick shadow msmtp unzip linux-headers \
     freetype-dev icu-dev openssl-dev imagemagick-dev libjpeg-turbo-dev libwebp-dev libpng-dev libzip-dev libssh2-dev git lz4-dev libxpm-dev
 
+# Install the Microsoft ODBC driver for SQL Server (Linux)
+RUN apk add --no-cache ca-certificates wget gnupg && \
+    ARCH=$(uname -m) && \
+    case $ARCH in x86_64) ARCH="amd64";; aarch64|arm64) ARCH="arm64";; *) echo "Unsupported architecture: $ARCH" && exit 1;; esac && \
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | gpg --import - && \
+    wget "https://download.microsoft.com/download/9dcab408-e0d4-4571-a81a-5a0951e3445f/msodbcsql18_18.6.1.1-1_${ARCH}.apk" && \
+    wget "https://download.microsoft.com/download/9dcab408-e0d4-4571-a81a-5a0951e3445f/msodbcsql18_18.6.1.1-1_${ARCH}.sig" && \
+    wget "https://download.microsoft.com/download/b60bb8b6-d398-4819-9950-2e30cf725fb0/mssql-tools18_18.6.1.1-1_${ARCH}.apk" && \
+    wget "https://download.microsoft.com/download/b60bb8b6-d398-4819-9950-2e30cf725fb0/mssql-tools18_18.6.1.1-1_${ARCH}.sig" && \
+    gpg --verify msodbcsql18_18.6.1.1-1_${ARCH}.sig msodbcsql18_18.6.1.1-1_${ARCH}.apk && \
+    gpg --verify mssql-tools18_18.6.1.1-1_${ARCH}.sig mssql-tools18_18.6.1.1-1_${ARCH}.apk && \
+    apk add --allow-untrusted msodbcsql18_18.6.1.1-1_${ARCH}.apk mssql-tools18_18.6.1.1-1_${ARCH}.apk && \
+    rm -f msodbcsql18_18.6.1.1-1_${ARCH}.apk msodbcsql18_18.6.1.1-1_${ARCH}.sig mssql-tools18_18.6.1.1-1_${ARCH}.apk mssql-tools18_18.6.1.1-1_${ARCH}.sig
+
 # Install PHP extensions using php-extension-installer
 RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS \
     && curl -L -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
     && chmod +x /usr/local/bin/install-php-extensions \
-    && install-php-extensions bcmath curl dom exif fileinfo gd hash igbinary intl json mbstring mysqli opcache openssl pcre pdo_mysql pdo_sqlite redis shmop simplexml sodium soap sockets ssh2 tokenizer xml xmlreader xmlwriter zip zlib apcu ftp relay
+    && install-php-extensions bcmath curl dom exif fileinfo gd hash igbinary intl json mbstring mysqli opcache openssl pcre pdo_mysql pdo_sqlite redis shmop simplexml sodium soap sockets ssh2 tokenizer xml xmlreader xmlwriter zip zlib apcu ftp relay pspell pcntl mongodb ldap imap grpc gmp gettext excimer ev calendar xsl sqlsrv pdo_sqlsrv pdo_pgsql
 
 # Install imagick manually for PHP 8.3
 RUN if [[ "$PHP_VERSION" == "8.3"* ]]; then \
@@ -70,11 +84,12 @@ COPY --from=wpcli_builder /home/www-data/.wp-cli /home/www-data/.wp-cli
 # Final stage
 FROM php:${PHP_VERSION}-fpm-alpine
 
-# Install runtime dependencies
+# Install runtime dependencies (including libraries for PHP extensions)
 RUN apk add --no-cache \
     bash sed ghostscript mysql-client imagemagick shadow msmtp unzip linux-headers \
     freetype icu openssl imagemagick libjpeg-turbo libwebp libpng libzip libssh2 git libgomp \
-    libssh2-dev lz4 libavif libxpm lz4-libs && \
+    libssh2-dev lz4 libavif libxpm lz4-libs \
+    unixodbc libpq libldap c-client snappy aspell-libs libxslt gmp && \
     rm -rf /var/cache/apk/*
 
 # Copy built extensions and configs from the builder stage
@@ -82,6 +97,10 @@ COPY --from=builder /usr/local/etc/php /usr/local/etc/php
 COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /home/www-data/.wp-cli /home/www-data/.wp-cli
+
+# Copy Microsoft ODBC driver and tools for SQL Server
+COPY --from=builder /opt/microsoft /opt/microsoft
+COPY --from=builder /etc/odbcinst.ini /etc/odbcinst.ini
 
 # Ensure the entrypoint script is copied and has executable permissions
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
