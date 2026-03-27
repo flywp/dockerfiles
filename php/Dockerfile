@@ -51,7 +51,7 @@ RUN apk add --no-cache ca-certificates wget gnupg && \
 RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS \
     && curl -L -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
     && chmod +x /usr/local/bin/install-php-extensions \
-    && install-php-extensions bcmath curl dom exif fileinfo gd hash igbinary intl json mbstring mysqli opcache openssl pcre pdo_mysql pdo_sqlite redis shmop simplexml sodium soap sockets ssh2 tokenizer xml xmlreader xmlwriter zip zlib apcu ftp relay pspell pcntl mongodb ldap imap grpc gmp gettext excimer ev calendar xsl sqlsrv pdo_sqlsrv pdo_pgsql
+    && install-php-extensions bcmath curl dom exif fileinfo gd hash igbinary intl json mbstring mysqli opcache openssl pcre pdo_mysql pdo_sqlite redis shmop simplexml sodium soap sockets ssh2 tokenizer xml xmlreader xmlwriter zip zlib apcu ftp relay pspell pcntl mongodb ldap imap gmp gettext excimer ev calendar xsl sqlsrv pdo_sqlsrv pdo_pgsql
 
 # Install imagick manually for PHP 8.3
 RUN if [[ "$PHP_VERSION" == "8.3"* ]]; then \
