@@ -58,7 +58,7 @@ RUN mkdir -p /var/www/html/public /var/www/html/logs \
 # Create the default PHP session directory (lsphp's session.save_path)
 RUN mkdir -p /var/lib/php/sessions \
     && chown www-data:www-data /var/lib/php/sessions \
-    && chmod 1733 /var/lib/php/sessions
+    && chmod 0700 /var/lib/php/sessions
 
 RUN echo "# Custom configurations" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini && \
     echo "include_dir /usr/local/etc/php/custom-conf.d" >> /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/litespeed/php.ini
