@@ -21,6 +21,7 @@ usermod -u $PUID www-data
 
 # Ensure correct permissions
 chown -R www-data:www-data /var/www/html
+chown www-data:www-data /var/lib/php/sessions
 chown -R lsadm:lsadm /usr/local/lsws
 
 # Start OpenLiteSpeed
