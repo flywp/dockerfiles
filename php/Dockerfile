@@ -1,4 +1,6 @@
 ARG PHP_VERSION=7.4
+# Base for the builder and final stages. Set it to use an image built by build-base.yml.
+ARG BASE_IMAGE=php:${PHP_VERSION}-fpm-alpine
 
 # Stage for Composer
 FROM php:${PHP_VERSION}-cli-alpine AS composer_builder
@@ -23,7 +25,7 @@ RUN apk add --no-cache curl unzip \
     && rm -rf /var/cache/apk/*
 
 # Main build stage
-FROM php:${PHP_VERSION}-fpm-alpine AS builder
+FROM ${BASE_IMAGE} AS builder
 
 LABEL maintainer="Tareq Hasan <tareq@wedevs.com>"
 
@@ -89,7 +91,7 @@ COPY --from=wpcli_builder /usr/local/bin/wp /usr/local/bin/wp
 COPY --from=wpcli_builder /home/www-data/.wp-cli /home/www-data/.wp-cli
 
 # Final stage
-FROM php:${PHP_VERSION}-fpm-alpine
+FROM ${BASE_IMAGE}
 
 # Install runtime dependencies (including libraries for PHP extensions)
 RUN apk add --no-cache \
