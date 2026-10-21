@@ -85,7 +85,6 @@ RUN apk del .build-deps .phpize-deps \
 # Set recommended PHP.ini settings and configure error logging
 COPY error-logging.ini expose.ini /usr/local/etc/php/conf.d/
 COPY security.ini /usr/local/etc/php/conf.d/zz-security.ini
-COPY zz-security.conf /usr/local/etc/php-fpm.d/zz-security.conf
 
 # Configure sendmail path for MSMTP
 RUN echo "sendmail_path = '/usr/bin/msmtp -t'" > /usr/local/etc/php/conf.d/mail.ini
@@ -108,6 +107,7 @@ RUN apk add --no-cache \
 
 # Copy built extensions and configs from the builder stage
 COPY --from=builder /usr/local/etc/php /usr/local/etc/php
+COPY zz-security.conf /usr/local/etc/php-fpm.d/zz-security.conf
 COPY --from=builder /usr/local/lib/php/extensions /usr/local/lib/php/extensions
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /home/www-data/.wp-cli /home/www-data/.wp-cli
