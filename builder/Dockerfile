@@ -9,7 +9,9 @@ ARG PHP_VERSION=8.3
 # Because it is FROM meghsh/php:${PHP_VERSION}, the PHP version and the full set
 # of PHP extensions match runtime exactly, so `composer install` platform checks
 # pass without --ignore-platform-reqs.
-FROM meghsh/php:${PHP_VERSION}
+# Set PHP_IMAGE to build on a test tag of the PHP image.
+ARG PHP_IMAGE=meghsh/php:${PHP_VERSION}
+FROM ${PHP_IMAGE}
 
 LABEL maintainer="Tareq Hasan <tareq@wedevs.com>"
 

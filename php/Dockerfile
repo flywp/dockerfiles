@@ -49,11 +49,14 @@ RUN apk add --no-cache ca-certificates wget gnupg && \
     apk add --allow-untrusted msodbcsql18_18.6.1.1-1_${ARCH}.apk mssql-tools18_18.6.1.1-1_${ARCH}.apk && \
     rm -f msodbcsql18_18.6.1.1-1_${ARCH}.apk msodbcsql18_18.6.1.1-1_${ARCH}.sig mssql-tools18_18.6.1.1-1_${ARCH}.apk mssql-tools18_18.6.1.1-1_${ARCH}.sig
 
+# Retry wrapper for network installs. In /usr/local/sbin, so the final stage does not copy it.
+COPY retry.sh /usr/local/sbin/retry
+
 # Install PHP extensions using php-extension-installer
 RUN apk add --no-cache --virtual .phpize-deps $PHPIZE_DEPS \
     && curl -L -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions \
     && chmod +x /usr/local/bin/install-php-extensions \
-    && install-php-extensions bcmath curl dom exif fileinfo gd hash igbinary intl json mbstring mysqli opcache openssl pcre pdo_mysql pdo_sqlite redis shmop simplexml sodium soap sockets ssh2 tokenizer xml xmlreader xmlwriter zip zlib apcu ftp pspell pcntl mongodb ldap imap gmp gettext excimer ev calendar xsl sqlsrv pdo_sqlsrv pdo_pgsql
+    && retry install-php-extensions bcmath curl dom exif fileinfo gd hash igbinary intl json mbstring mysqli opcache openssl pcre pdo_mysql pdo_sqlite redis shmop simplexml sodium soap sockets ssh2 tokenizer xml xmlreader xmlwriter zip zlib apcu ftp pspell pcntl mongodb ldap imap gmp gettext excimer ev calendar xsl sqlsrv pdo_sqlsrv pdo_pgsql
 
 # Install imagick manually for PHP 8.3
 RUN if [[ "$PHP_VERSION" == "8.3"* ]]; then \
@@ -65,14 +68,14 @@ RUN if [[ "$PHP_VERSION" == "8.3"* ]]; then \
         make install && \
         docker-php-ext-enable imagick; \
     else \
-        install-php-extensions imagick; \
+        retry install-php-extensions imagick; \
     fi
 
 # Install relay last; it can't load under QEMU arm64 emulation, so skip its check there
 RUN if [ "$(uname -m)" = "aarch64" ]; then \
-        IPE_SKIP_CHECK=1 install-php-extensions relay; \
+        IPE_SKIP_CHECK=1 retry install-php-extensions relay; \
     else \
-        install-php-extensions relay; \
+        retry install-php-extensions relay; \
     fi
 
 # Clean up build dependencies
