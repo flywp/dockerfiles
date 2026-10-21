@@ -22,10 +22,9 @@ on:
         required: false
         default: 'alpine3.24'
   # Dry run only: a workflow must be on the default branch before it can be dispatched.
-  # The PR run always builds 8.2.34 and pushes test- tags.
+  # Add the "test-base-image" label to a PR. The run builds 8.2.34 and pushes test- tags only.
   pull_request:
-    paths:
-      - '.github/workflows/build-base.yml'
+    types: [labeled]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -40,6 +39,7 @@ env:
 
 jobs:
   setup:
+    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'test-base-image' }}
     runs-on: ubuntu-latest
     outputs:
       releases: ${{ steps.matrix.outputs.releases }}
@@ -50,6 +50,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          set -o pipefail
           read -ra versions <<< "${PHP_VERSIONS//,/ }"
           read -ra sums <<< "${PHP_SHA256S//,/ }"
           if [ "${#versions[@]}" -eq 0 ] || [ "${#versions[@]}" -ne "${#sums[@]}" ]; then
@@ -69,6 +70,7 @@ jobs:
           echo "docker-library/php commit: $upstream_sha"
 
   build:
+    name: build (${{ matrix.release.version }}, ${{ matrix.arch }})
     needs: setup
     runs-on: ${{ matrix.runner }}
     strategy:
@@ -160,7 +162,10 @@ jobs:
           retention-days: 1
 
   merge:
+    name: merge (${{ matrix.release.version }})
     needs: [setup, build]
+    # Keep the other PHP versions going when one build fails.
+    if: ${{ !cancelled() && needs.setup.result == 'success' }}
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

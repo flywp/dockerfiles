@@ -54,7 +54,7 @@ jobs:
           ols_all='[{"php_version":"7.4","lsphp":"lsphp74"},{"php_version":"8.1","lsphp":"lsphp81"},{"php_version":"8.2","lsphp":"lsphp82"},{"php_version":"8.3","lsphp":"lsphp83"},{"php_version":"8.4","lsphp":"lsphp84"}]'
           php=$(jq -nc --arg versions "$PHP_VERSIONS" --argjson all "$all" \
             '$versions | gsub(","; " ") | split(" ") | map(select(length > 0)) | if length == 0 then $all else . end')
-          jq -e --argjson php "$php" --argjson all "$all" '$php - $all | length == 0' > /dev/null \
+          jq -ne --argjson php "$php" --argjson all "$all" '$php - $all | length == 0' > /dev/null \
             || { echo "::error::Unknown PHP version in: $PHP_VERSIONS"; exit 1; }
           if [ "$BUILD_OPENLITESPEED" = "true" ]; then
             ols=$(jq -c --argjson php "$php" 'map(select(.php_version as $v | $php | index($v)))' <<< "$ols_all")
