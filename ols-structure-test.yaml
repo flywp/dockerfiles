@@ -60,3 +60,8 @@ commandTests:
     command: "git"
     args: ["--version"]
     expectedOutput: ["git version"]
+
+  - name: "Session upload progress is disabled (CVE-2026-109619)"
+    command: "php"
+    args: ["-r", "echo ini_get('session.upload_progress.enabled') ? 'upload_progress=on' : 'upload_progress=off';"]
+    expectedOutput: ["upload_progress=off"]

@@ -84,6 +84,8 @@ RUN apk del .build-deps .phpize-deps \
 
 # Set recommended PHP.ini settings and configure error logging
 COPY error-logging.ini expose.ini /usr/local/etc/php/conf.d/
+COPY security.ini /usr/local/etc/php/conf.d/zz-security.ini
+COPY zz-security.conf /usr/local/etc/php-fpm.d/zz-security.conf
 
 # Configure sendmail path for MSMTP
 RUN echo "sendmail_path = '/usr/bin/msmtp -t'" > /usr/local/etc/php/conf.d/mail.ini

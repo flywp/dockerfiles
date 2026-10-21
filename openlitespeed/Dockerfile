@@ -69,6 +69,7 @@ RUN echo "sendmail_path = /usr/bin/msmtp -t" >> /usr/local/lsws/${LSPHP}/etc/php
 WORKDIR /var/www/html
 
 # Copy configuration files
+COPY security.ini /usr/local/lsws/${LSPHP}/etc/php/${PHP_VERSION}/mods-available/zz-security.ini
 COPY httpd_config.conf /usr/local/lsws/conf/httpd_config.conf
 COPY vhconf.conf /usr/local/lsws/conf/vhosts/flywp/vhconf.conf
 
