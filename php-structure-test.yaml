@@ -104,3 +104,13 @@ commandTests:
     command: "convert"
     args: ["-version"]
     expectedOutput: ["ImageMagick"]
+
+  - name: "Session upload progress is disabled (CVE-2026-109619)"
+    command: "php"
+    args: ["-r", "echo ini_get('session.upload_progress.enabled') ? 'upload_progress=on' : 'upload_progress=off';"]
+    expectedOutput: ["upload_progress=off"]
+
+fileContentTests:
+  - name: "FPM pool locks session upload progress off"
+    path: "/usr/local/etc/php-fpm.d/zz-security.conf"
+    expectedContents: ["php_admin_flag\\[session.upload_progress.enabled\\] = off"]

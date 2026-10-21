@@ -1,0 +1,202 @@
+name: Build PHP base image from php.net tarball
+
+# Builds the docker-library php:<minor>-fpm-alpine image ourselves, with a PHP
+# version that the official images do not have yet (security releases).
+# Result: <org>/php-base:<prefix><minor>-fpm-alpine and <org>/php-base:<prefix><version>-fpm-alpine.
+
+on:
+  workflow_dispatch:
+    inputs:
+      php_version:
+        description: 'PHP versions, space or comma separated (e.g. "8.2.35 8.3.28")'
+        required: true
+      php_sha256:
+        description: 'sha256 of each php-<version>.tar.xz, same order as php_version'
+        required: true
+      tag_prefix:
+        description: 'Tag prefix (e.g. "test-"). Empty = release tags.'
+        required: false
+        default: ''
+      alpine:
+        description: 'docker-library alpine directory'
+        required: false
+        default: 'alpine3.24'
+  # Dry run only: a workflow must be on the default branch before it can be dispatched.
+  # Add the "test-base-image" label to a PR. The run builds 8.2.34 and pushes test- tags only.
+  pull_request:
+    types: [labeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}/php-base
+  PHP_VERSIONS: ${{ github.event_name == 'pull_request' && '8.2.34' || inputs.php_version }}
+  PHP_SHA256S: ${{ github.event_name == 'pull_request' && '5351330c54de240f54f7527c26ef292e239749e6fe11db0330acb5317e02bb39' || inputs.php_sha256 }}
+  TAG_PREFIX: ${{ github.event_name == 'pull_request' && 'test-' || inputs.tag_prefix }}
+  ALPINE: ${{ inputs.alpine || 'alpine3.24' }}
+
+jobs:
+  setup:
+    if: ${{ github.event_name != 'pull_request' || github.event.label.name == 'test-base-image' }}
+    runs-on: ubuntu-latest
+    outputs:
+      releases: ${{ steps.matrix.outputs.releases }}
+      upstream_sha: ${{ steps.matrix.outputs.upstream_sha }}
+    steps:
+      - name: Create release matrix
+        id: matrix
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          read -ra versions <<< "${PHP_VERSIONS//,/ }"
+          read -ra sums <<< "${PHP_SHA256S//,/ }"
+          if [ "${#versions[@]}" -eq 0 ] || [ "${#versions[@]}" -ne "${#sums[@]}" ]; then
+            echo "::error::php_version and php_sha256 must have the same number of items"
+            exit 1
+          fi
+          releases=$(for i in "${!versions[@]}"; do
+            [[ "${versions[$i]}" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "::error::Bad version ${versions[$i]}" >&2; exit 1; }
+            [[ "${sums[$i]}" =~ ^[0-9a-f]{64}$ ]] || { echo "::error::Bad sha256 ${sums[$i]}" >&2; exit 1; }
+            jq -nc --arg version "${versions[$i]}" --arg sha256 "${sums[$i]}" \
+              '{version: $version, sha256: $sha256, minor: ($version | split(".")[0:2] | join("."))}'
+          done | jq -sc .)
+          upstream_sha=$(gh api repos/docker-library/php/commits/master --jq .sha)
+          echo "releases=$releases" >> "$GITHUB_OUTPUT"
+          echo "upstream_sha=$upstream_sha" >> "$GITHUB_OUTPUT"
+          echo "Releases: $releases"
+          echo "docker-library/php commit: $upstream_sha"
+
+  build:
+    name: build (${{ matrix.release.version }}, ${{ matrix.arch }})
+    needs: setup
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ${{ fromJSON(needs.setup.outputs.releases) }}
+        platform: [linux/amd64, linux/arm64]
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      VERSION: ${{ matrix.release.version }}
+      SHA256: ${{ matrix.release.sha256 }}
+      MINOR: ${{ matrix.release.minor }}
+    steps:
+      - name: Fetch docker-library files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          UPSTREAM_SHA: ${{ needs.setup.outputs.upstream_sha }}
+        run: |
+          mkdir base
+          gh api "repos/docker-library/php/contents/${MINOR}/${ALPINE}/fpm?ref=${UPSTREAM_SHA}" \
+            --jq '.[] | select(.type == "file") | .download_url' \
+            | while read -r url; do curl -fsSL --retry 5 -o "base/$(basename "$url")" "$url"; done
+          chmod +x base/docker-php-*
+          ls -l base
+
+      - name: Set PHP version in Dockerfile
+        working-directory: base
+        run: |
+          url="https://www.php.net/distributions/php-${VERSION}.tar.xz"
+          version_line="ENV PHP_VERSION ${VERSION}"
+          url_line="ENV PHP_URL=\"${url}\" PHP_ASC_URL=\"${url}.asc\""
+          sha_line="ENV PHP_SHA256=\"${SHA256}\""
+          sed -i \
+            -e "s|^ENV PHP_VERSION .*|${version_line}|" \
+            -e "s|^ENV PHP_URL=.*|${url_line}|" \
+            -e "s|^ENV PHP_SHA256=.*|${sha_line}|" \
+            Dockerfile
+          for line in "$version_line" "$url_line" "$sha_line"; do
+            grep -Fxq "$line" Dockerfile || { echo "::error::Dockerfile does not contain: $line"; exit 1; }
+          done
+          grep -q 'gpg --batch --verify php.tar.xz.asc php.tar.xz' Dockerfile || { echo "::error::GPG verification is missing"; exit 1; }
+          grep -E '^ENV (GPG_KEYS|PHP_VERSION|PHP_URL|PHP_SHA256)' Dockerfile
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: base
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+
+      - name: Check PHP version in image
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          actual=$(docker run --rm "${IMAGE}@${DIGEST}" php -r 'echo PHP_VERSION;')
+          echo "Image PHP version: $actual"
+          [ "$actual" = "$VERSION" ] || { echo "::error::Expected PHP $VERSION, got $actual"; exit 1; }
+          docker run --rm "${IMAGE}@${DIGEST}" php-fpm -v
+
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ matrix.release.minor }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge:
+    name: merge (${{ matrix.release.version }})
+    needs: [setup, build]
+    # Keep the other PHP versions going when one build fails.
+    if: ${{ !cancelled() && needs.setup.result == 'success' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        release: ${{ fromJSON(needs.setup.outputs.releases) }}
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-${{ matrix.release.minor }}-*
+          merge-multiple: true
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        env:
+          MINOR: ${{ matrix.release.minor }}
+          VERSION: ${{ matrix.release.version }}
+        run: |
+          [ "$(ls | wc -l)" -eq 2 ] || { echo "::error::Expected 2 digests, got $(ls | wc -l)"; exit 1; }
+          docker buildx imagetools create \
+            -t "${IMAGE}:${TAG_PREFIX}${MINOR}-fpm-alpine" \
+            -t "${IMAGE}:${TAG_PREFIX}${VERSION}-fpm-alpine" \
+            $(printf "${IMAGE}@sha256:%s " *)
+          docker buildx imagetools inspect "${IMAGE}:${TAG_PREFIX}${VERSION}-fpm-alpine"

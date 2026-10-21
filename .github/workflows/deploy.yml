@@ -2,6 +2,24 @@ name: Build, Test, and Push Docker images
 
 on:
   workflow_dispatch:
+    inputs:
+      php_versions:
+        description: 'PHP minors to build, space or comma separated (e.g. "8.2 8.3"). Empty = all.'
+        required: false
+        default: ''
+      base_image:
+        description: 'Base image prefix. The base is <prefix><minor>-fpm-alpine (e.g. "meghsh/php-base:"). Empty = official php:<minor>-fpm-alpine.'
+        required: false
+        default: ''
+      tag_suffix:
+        description: 'Tag suffix for the pushed images (e.g. "-test"). Empty = release tags.'
+        required: false
+        default: ''
+      openlitespeed:
+        description: 'Build OpenLiteSpeed images'
+        type: boolean
+        required: false
+        default: true
   schedule:
     - cron: '0 0 1,15 * *'
   push:
@@ -10,26 +28,65 @@ on:
     tags:
       - '*'
 
+# Do not cancel: a push to main must not cancel a release run. Runs on the same ref wait in a queue.
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 env:
   DOCKER_ORG_USERNAME: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}
+  TAG_SUFFIX: ${{ inputs.tag_suffix }}
 
 jobs:
-  build-php:
+  setup:
     runs-on: ubuntu-latest
+    outputs:
+      php: ${{ steps.matrix.outputs.php }}
+      openlitespeed: ${{ steps.matrix.outputs.openlitespeed }}
+    steps:
+      - name: Create matrix
+        id: matrix
+        env:
+          PHP_VERSIONS: ${{ inputs.php_versions }}
+          BUILD_OPENLITESPEED: ${{ github.event_name != 'workflow_dispatch' || inputs.openlitespeed }}
+        run: |
+          all='["7.4","8.0","8.1","8.2","8.3","8.4","8.5"]'
+          ols_all='[{"php_version":"7.4","lsphp":"lsphp74"},{"php_version":"8.1","lsphp":"lsphp81"},{"php_version":"8.2","lsphp":"lsphp82"},{"php_version":"8.3","lsphp":"lsphp83"},{"php_version":"8.4","lsphp":"lsphp84"}]'
+          php=$(jq -nc --arg versions "$PHP_VERSIONS" --argjson all "$all" \
+            '$versions | gsub(","; " ") | split(" ") | map(select(length > 0)) | if length == 0 then $all else . end')
+          jq -ne --argjson php "$php" --argjson all "$all" '$php - $all | length == 0' > /dev/null \
+            || { echo "::error::Unknown PHP version in: $PHP_VERSIONS"; exit 1; }
+          if [ "$BUILD_OPENLITESPEED" = "true" ]; then
+            ols=$(jq -c --argjson php "$php" 'map(select(.php_version as $v | $php | index($v)))' <<< "$ols_all")
+          else
+            ols='[]'
+          fi
+          echo "php=$php" >> "$GITHUB_OUTPUT"
+          echo "openlitespeed=$ols" >> "$GITHUB_OUTPUT"
+          echo "PHP: $php"
+          echo "OpenLiteSpeed: $ols"
+
+  build-php:
+    needs: setup
+    runs-on: ${{ matrix.runner }}
     strategy:
       fail-fast: false
       matrix:
-        php_version: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+        php_version: ${{ fromJSON(needs.setup.outputs.php) }}
+        platform: [linux/amd64, linux/arm64]
+        include:
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      IMAGE: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}/php
+      BASE_IMAGE: ${{ inputs.base_image && format('{0}{1}-fpm-alpine', inputs.base_image, matrix.php_version) || format('php:{0}-fpm-alpine', matrix.php_version) }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -40,19 +97,23 @@ jobs:
           file: php/Dockerfile
           context: php
           load: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
+          tags: ${{ env.IMAGE }}:${{ matrix.php_version }}${{ env.TAG_SUFFIX }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+            BASE_IMAGE=${{ env.BASE_IMAGE }}
+
+      - name: Show PHP version
+        run: docker run --rm --entrypoint php "${IMAGE}:${{ matrix.php_version }}${TAG_SUFFIX}" -v
 
       - name: Install Container Structure Test
         run: |
-          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-          chmod +x container-structure-test-linux-amd64
-          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+          curl -fsSLo container-structure-test https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-${{ matrix.arch }}
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
 
       - name: Run Container Structure Tests
         run: |
-          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }} --config php-structure-test.yaml
+          container-structure-test test --image "${IMAGE}:${{ matrix.php_version }}${TAG_SUFFIX}" --config php-structure-test.yaml
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -60,42 +121,89 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Push PHP Docker image
-        if: success()
+      - name: Push PHP Docker image by digest
+        id: push
         uses: docker/build-push-action@v5
         with:
           file: php/Dockerfile
           context: php
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/php:${{ matrix.php_version }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+            BASE_IMAGE=${{ env.BASE_IMAGE }}
 
-  build-openlitespeed:
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-php-${{ matrix.php_version }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-php:
+    needs: [setup, build-php]
+    # Keep the other PHP versions going when one build fails.
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     strategy:
+      fail-fast: false
       matrix:
-        php_version: ['7.4', '8.1', '8.2', '8.3', '8.4']
+        php_version: ${{ fromJSON(needs.setup.outputs.php) }}
+    env:
+      IMAGE: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}/php
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-php-${{ matrix.php_version }}-*
+          merge-multiple: true
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          [ "$(ls | wc -l)" -eq 2 ] || { echo "::error::Expected 2 digests (amd64, arm64), got $(ls | wc -l)"; exit 1; }
+          docker buildx imagetools create -t "${IMAGE}:${{ matrix.php_version }}${TAG_SUFFIX}" $(printf "${IMAGE}@sha256:%s " *)
+          docker buildx imagetools inspect "${IMAGE}:${{ matrix.php_version }}${TAG_SUFFIX}"
+
+  build-openlitespeed:
+    needs: setup
+    if: ${{ needs.setup.outputs.openlitespeed != '[]' }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        ols: ${{ fromJSON(needs.setup.outputs.openlitespeed) }}
+        platform: [linux/amd64, linux/arm64]
         include:
-          - php_version: '7.4'
-            lsphp: 'lsphp74'
-          - php_version: '8.1'
-            lsphp: 'lsphp81'
-          - php_version: '8.2'
-            lsphp: 'lsphp82'
-          - php_version: '8.3'
-            lsphp: 'lsphp83'
-          - php_version: '8.4'
-            lsphp: 'lsphp84'
+          - platform: linux/amd64
+            arch: amd64
+            runner: ubuntu-latest
+          - platform: linux/arm64
+            arch: arm64
+            runner: ubuntu-24.04-arm
+    env:
+      IMAGE: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}/openlitespeed
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-        with:
-          image: tonistiigi/binfmt:qemu-v7.0.0-28
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -106,20 +214,20 @@ jobs:
           file: openlitespeed/Dockerfile
           context: openlitespeed
           load: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }}
+          tags: ${{ env.IMAGE }}:${{ matrix.ols.php_version }}${{ env.TAG_SUFFIX }}
           build-args: |
-            PHP_VERSION=${{ matrix.php_version }}
-            LSPHP=${{ matrix.lsphp }}
+            PHP_VERSION=${{ matrix.ols.php_version }}
+            LSPHP=${{ matrix.ols.lsphp }}
 
       - name: Install Container Structure Test
         run: |
-          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-          chmod +x container-structure-test-linux-amd64
-          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+          curl -fsSLo container-structure-test https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-${{ matrix.arch }}
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
 
       - name: Run Container Structure Tests
         run: |
-          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }} --config ols-structure-test.yaml
+          container-structure-test test --image "${IMAGE}:${{ matrix.ols.php_version }}${TAG_SUFFIX}" --config ols-structure-test.yaml
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -127,26 +235,79 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Push OpenLiteSpeed Docker image
-        if: success()
+      - name: Push OpenLiteSpeed Docker image by digest
+        id: push
         uses: docker/build-push-action@v5
         with:
           file: openlitespeed/Dockerfile
           context: openlitespeed
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/openlitespeed:${{ matrix.php_version }}
+          platforms: ${{ matrix.platform }}
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
           build-args: |
-            PHP_VERSION=${{ matrix.php_version }}
-            LSPHP=${{ matrix.lsphp }}
+            PHP_VERSION=${{ matrix.ols.php_version }}
+            LSPHP=${{ matrix.ols.lsphp }}
+
+      - name: Export digest
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          mkdir -p /tmp/digests
+          touch "/tmp/digests/${DIGEST#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-ols-${{ matrix.ols.php_version }}-${{ matrix.arch }}
+          path: /tmp/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  merge-openlitespeed:
+    needs: [setup, build-openlitespeed]
+    if: ${{ !cancelled() && needs.setup.outputs.openlitespeed != '[]' }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ols: ${{ fromJSON(needs.setup.outputs.openlitespeed) }}
+    env:
+      IMAGE: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}/openlitespeed
+    steps:
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: /tmp/digests
+          pattern: digests-ols-${{ matrix.ols.php_version }}-*
+          merge-multiple: true
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Create manifest list and push
+        working-directory: /tmp/digests
+        run: |
+          [ "$(ls | wc -l)" -eq 2 ] || { echo "::error::Expected 2 digests (amd64, arm64), got $(ls | wc -l)"; exit 1; }
+          docker buildx imagetools create -t "${IMAGE}:${{ matrix.ols.php_version }}${TAG_SUFFIX}" $(printf "${IMAGE}@sha256:%s " *)
+          docker buildx imagetools inspect "${IMAGE}:${{ matrix.ols.php_version }}${TAG_SUFFIX}"
 
   build-builder:
     runs-on: ubuntu-latest
-    # Builder is FROM meghsh/php:<version>, so the base image must be pushed first.
-    needs: build-php
+    # Builder is FROM meghsh/php:<version>, so the PHP image must be pushed first.
+    needs: [setup, merge-php]
+    if: ${{ !cancelled() }}
     strategy:
+      fail-fast: false
       matrix:
-        php_version: ['7.4', '8.0', '8.1', '8.2', '8.3', '8.4', '8.5']
+        php_version: ${{ fromJSON(needs.setup.outputs.php) }}
+    env:
+      IMAGE: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}/builder
+      PHP_IMAGE: ${{ vars.DOCKER_ORG_USERNAME || 'meghsh' }}/php:${{ matrix.php_version }}${{ inputs.tag_suffix }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -163,19 +324,20 @@ jobs:
           file: builder/Dockerfile
           context: builder
           load: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/builder:${{ matrix.php_version }}
+          tags: ${{ env.IMAGE }}:${{ matrix.php_version }}${{ env.TAG_SUFFIX }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+            PHP_IMAGE=${{ env.PHP_IMAGE }}
 
       - name: Install Container Structure Test
         run: |
-          curl -LO https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
-          chmod +x container-structure-test-linux-amd64
-          sudo mv container-structure-test-linux-amd64 /usr/local/bin/container-structure-test
+          curl -fsSLo container-structure-test https://storage.googleapis.com/container-structure-test/latest/container-structure-test-linux-amd64
+          chmod +x container-structure-test
+          sudo mv container-structure-test /usr/local/bin/container-structure-test
 
       - name: Run Container Structure Tests
         run: |
-          container-structure-test test --image ${{ env.DOCKER_ORG_USERNAME }}/builder:${{ matrix.php_version }} --config builder-structure-test.yaml
+          container-structure-test test --image "${IMAGE}:${{ matrix.php_version }}${TAG_SUFFIX}" --config builder-structure-test.yaml
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -191,6 +353,7 @@ jobs:
           context: builder
           platforms: linux/amd64,linux/arm64
           push: true
-          tags: ${{ env.DOCKER_ORG_USERNAME }}/builder:${{ matrix.php_version }}
+          tags: ${{ env.IMAGE }}:${{ matrix.php_version }}${{ env.TAG_SUFFIX }}
           build-args: |
             PHP_VERSION=${{ matrix.php_version }}
+            PHP_IMAGE=${{ env.PHP_IMAGE }}
