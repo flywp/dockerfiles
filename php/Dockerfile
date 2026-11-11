@@ -9,16 +9,17 @@ RUN apk add --no-cache curl \
     && rm -rf /var/cache/apk/*
 
 # Stage for WP-CLI
+# Nightly build: the latest stable (2.12.0) breaks `wp core download` for WordPress 7
+# (https://github.com/wp-cli/wp-cli/issues/6396). Move back to wp-cli.phar once a fixed stable ships.
 FROM php:${PHP_VERSION}-cli-alpine AS wpcli_builder
+COPY wp-cli-packages.json /root/.wp-cli/packages/composer.json
 RUN apk add --no-cache curl unzip \
     && curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer \
-    && curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+    && curl -fsSLo wp-cli.phar https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli-nightly.phar \
     && chmod +x wp-cli.phar \
     && mv wp-cli.phar /usr/local/bin/wp \
-    && mkdir -p /root/.wp-cli/packages \
     && cd /root/.wp-cli/packages \
-    && composer init --name=wp-cli/wp-cli-packages --stability=stable --no-interaction \
-    && composer require wp-cli/doctor-command:@stable --prefer-dist --no-interaction \
+    && composer require wp-cli/doctor-command:^3 --prefer-dist --no-interaction \
     && mkdir -p /home/www-data/.wp-cli \
     && mv /root/.wp-cli/packages /home/www-data/.wp-cli/ \
     && chown -R www-data:www-data /home/www-data/.wp-cli \

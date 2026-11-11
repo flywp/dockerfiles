@@ -41,10 +41,10 @@ RUN wget -O - https://repo.litespeed.sh | bash \
     rm -rf /var/lib/apt/lists/* && \
     apt-get clean && apt-get autoremove -y
 
-# Install Composer and WP-CLI
+# Install Composer and WP-CLI (nightly until a stable release fixes https://github.com/wp-cli/wp-cli/issues/6396)
 RUN wget -qO /usr/local/bin/composer https://getcomposer.org/download/latest-stable/composer.phar \
     && chmod +x /usr/local/bin/composer \
-    && wget -qO /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar \
+    && wget -qO /usr/local/bin/wp https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli-nightly.phar \
     && chmod +x /usr/local/bin/wp \
     && echo "alias wp='wp --allow-root'" >> /root/.bashrc
 
