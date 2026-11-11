@@ -1,0 +1,15 @@
+{
+    "name": "wp-cli/wp-cli-packages",
+    "description": "WP-CLI packages. The framework and bundled commands come from the wp-cli phar, so they are replaced here to keep a second copy out of vendor/.",
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "replace": {
+        "wp-cli/wp-cli": "*",
+        "wp-cli/checksum-command": "*",
+        "wp-cli/core-command": "*",
+        "wp-cli/cron-command": "*",
+        "wp-cli/entity-command": "*",
+        "wp-cli/extension-command": "*",
+        "wp-cli/language-command": "*"
+    }
+}
