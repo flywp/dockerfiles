@@ -123,6 +123,12 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Set pager for WP-CLI
 ENV PAGER=less
 
+# Writable home for WP-CLI and Composer, for any uid
+RUN mkdir -p /home/www-data/.wp-cli /home/www-data/.composer \
+    && chmod 1777 /home/www-data \
+    && chmod -R a+rwX /home/www-data/.wp-cli /home/www-data/.composer
+ENV HOME=/home/www-data
+
 # Volume and User settings
 VOLUME /var/www/html
 
