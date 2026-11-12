@@ -123,9 +123,7 @@ RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 # Set pager for WP-CLI
 ENV PAGER=less
 
-# Home for WP-CLI and Composer, usable by any uid. Compose runs this image as the
-# host user (user: uid:gid), which has no passwd entry, so HOME would be / and
-# WP-CLI could not create its cache or find the bundled packages.
+# Writable home for WP-CLI and Composer, for any uid
 RUN mkdir -p /home/www-data/.wp-cli /home/www-data/.composer \
     && chmod 1777 /home/www-data \
     && chmod -R a+rwX /home/www-data/.wp-cli /home/www-data/.composer

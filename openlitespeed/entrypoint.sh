@@ -19,8 +19,7 @@ echo "setting GID to $PGID and UID to $PUID"
 groupmod -g $PGID www-data
 usermod -u $PUID www-data
 
-# Home dirs for WP-CLI and Composer, healed on every start (also after a recreate)
-# Never fatal: a failure here must not stop OpenLiteSpeed from starting (set -e).
+# Home dirs for WP-CLI and Composer
 mkdir -p /var/www/.wp-cli/cache /var/www/.composer || echo "Warning: could not create the WP-CLI and Composer home dirs"
 chown -R www-data:www-data /var/www/.wp-cli /var/www/.composer || echo "Warning: could not chown the WP-CLI and Composer home dirs"
 
