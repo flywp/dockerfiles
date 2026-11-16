@@ -105,10 +105,25 @@ commandTests:
     args: ["-version"]
     expectedOutput: ["ImageMagick"]
 
+  - name: "HOME is world-writable (compose runs the image as any host uid)"
+    command: "stat"
+    args: ["-c", "%a", "/home/www-data"]
+    expectedOutput: ["1777"]
+
+  - name: "WP-CLI home dir is writable"
+    command: "sh"
+    args: ["-c", "test -w \"$HOME/.wp-cli\" && echo wpcli-home-writable"]
+    expectedOutput: ["wpcli-home-writable"]
+
   - name: "Session upload progress is disabled (CVE-2026-109619)"
     command: "php"
     args: ["-r", "echo ini_get('session.upload_progress.enabled') ? 'upload_progress=on' : 'upload_progress=off';"]
     expectedOutput: ["upload_progress=off"]
+
+metadataTest:
+  envVars:
+    - key: "HOME"
+      value: "/home/www-data"
 
 fileContentTests:
   - name: "FPM pool locks session upload progress off"

@@ -26,7 +26,7 @@ USER root
 RUN apk add --no-cache nodejs npm \
     && npm install -g --force yarn pnpm \
     && npm cache clean --force \
-    && rm -rf /var/cache/apk/* /root/.npm
+    && rm -rf /var/cache/apk/* /root/.npm /home/www-data/.npm
 
 # Plain tool image: drop the inherited php-fpm entrypoint so the image just runs
 # the command it is given (composer / npm / bash -c '...').

@@ -65,3 +65,8 @@ commandTests:
     command: "php"
     args: ["-r", "echo ini_get('session.upload_progress.enabled') ? 'upload_progress=on' : 'upload_progress=off';"]
     expectedOutput: ["upload_progress=off"]
+
+fileContentTests:
+  - name: "Entrypoint creates the WP-CLI and Composer home dirs on every start"
+    path: "/entrypoint.sh"
+    expectedContents: ["mkdir -p /var/www/.wp-cli/cache /var/www/.composer", "chown -R www-data:www-data /var/www/.wp-cli /var/www/.composer"]
